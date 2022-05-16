@@ -1,0 +1,691 @@
+﻿@page "/"
+
+@using System.Globalization
+@using System.Text.Json
+
+@*@inject ICentroCostoService CentroCostoService
+@inject IGerenciaService GerenciaService
+@inject IJefaturaService JefaturaService
+@inject IOrdenCompraService OrdenCompraService
+@inject IProveedorService ProveedorService
+@inject IFamiliaService FamiliaService
+@inject IEjecutivoService EjecutivoService
+@inject IDespachosDiaService DespachosDiaService
+@inject IDespachosAtrasadosService DespachosAtrasadosService
+@inject IResumenEntidadService ResumenEntidadService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime iJSRuntime
+@inject ExportService service
+*@
+ <div class="container-fluid p-0" style="position: relative">
+     <div class="row no-gutters mx-n2">
+        <div class="col-lg-12 col-xl-12 pr-2 pt-2">
+            <RadzenCard>
+                <RadzenTemplateForm class="row" TItem="FilterJerarquia">
+                    
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">División</h4></div> 
+                    <div class="col-sm-2 p-3"> 
+                        <RadzenDropDown 
+                            TValue="string"
+                            Class="w-100"
+                            Data=@Divisiones
+                            Placeholder="Seleccione una división"
+                            Change=@OnChangeDivision
+                        />
+                    </div>
+
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">Gerencia</h4></div>
+                    <div class="col-sm-2 p-3">
+                        <RadzenDropDown 
+                            TValue="string"
+                            Class="w-100"
+                            Data=@GerenciaService.Gerencias
+                            Placeholder="Seleccione una gerencia" 
+                            ValueProperty="Rut"
+                            TextProperty="Nombre"                            
+                            Change=@OnChangeGerencia
+                        />
+                    </div>
+
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">Jefatura</h4></div>
+                    <div class="col-sm-2 p-3">
+                        <RadzenDropDown 
+                            TValue="string"
+                            Class="w-100"
+                            Data=@JefaturaService.Jefaturas
+                            Placeholder="Seleccione una jefatura" 
+                            ValueProperty="Rut"
+                            TextProperty="Nombre"
+                            Change=@OnChangeJefatura
+                        />
+                    </div>
+
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">Casinos</h4></div>
+                    <div class="col-sm-2 p-3"> 
+                        <RadzenDropDown 
+                            AllowClear="true"
+                            TValue="IEnumerable<object>"
+                            Class="w-100"
+                            Data=@CentroCostoService.CentrosCosto
+                            Placeholder="Seleccione uno o varios casinos" 
+                            TextProperty="Nombre" 
+                            ValueProperty="Codigo"
+                            MaxSelectedLabels=3
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Multiple="true" 
+                        />
+                    </div>
+                </RadzenTemplateForm>
+                 <RadzenTemplateForm class="row" TItem="FilterEntidades" Data=@filterEntidades>
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">Proveedores</h4></div>
+                    <div class="col-sm-3 p-3">
+                        <RadzenDropDown 
+                            Name="fProveedores"
+                            AllowVirtualization="true"
+                            TValue="IEnumerable<object>"
+                            AllowClear="true" 
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            @bind-Value=@filterEntidades.Proveedores
+                            Multiple="true" 
+                            Placeholder="Seleccione uno o varios proveedores" 
+                            Data=@ProveedorService.Proveedores 
+                            TextProperty="ProveedorAlias" 
+                            ValueProperty="ProveedorId"
+                            Class="w-100"
+                        />
+                    </div>
+
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">Ejecutivos</h4></div>
+                    <div class="col-sm-3 p-3">
+                        <RadzenDropDown 
+                            AllowClear="true" 
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            @bind-Value=@filterEntidades.Ejecutivos
+                            Multiple="true" 
+                            Placeholder="Seleccione uno o varios ejecutivos" 
+                            Data=@EjecutivoService.Ejecutivos 
+                            TextProperty="Nombre" 
+                            ValueProperty="Rut"
+                            Class="w-100"
+                        />
+                    </div>
+
+                    <div class="col-sm-1 p-3"><h4 class="mb-4">Familias</h4></div>
+                    <div class="col-sm-3 p-3">
+                        <RadzenDropDown 
+                            MaxSelectedLabels=3
+                            FilterDelay="200"
+                            Name="fFamilias"
+                            AllowVirtualization="true"
+                            TValue="IEnumerable<object>"
+                            AllowClear="true" 
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            @bind-Value=@filterEntidades.Familias
+                            Multiple="true" 
+                            Placeholder="Seleccione una o varias familias" 
+                            Data=@FamiliaService.Familias 
+                            TextProperty="Nombre" 
+                            ValueProperty="Id"
+                            Class="w-100"
+                        />
+                    </div>
+                </RadzenTemplateForm>
+            </RadzenCard>
+        </div>
+    </div>
+
+    <div class="row no-gutters mx-n2">
+        <div class="col-sm-3 pr-2 pt-2">
+            <RadzenCard Style="height:245px; background-color:#0080001c;">
+                <SpinLoader IsLoading=@isLoadingResumenDiarioEjecutivo>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            Style="height: 205px;" 
+                            Data="@ResumenEntidadService.ResumenEntidades.OrderByDescending(x => (x.Codigo == null) ? -1 : 1).ThenByDescending(x => x.Atrasada)" 
+                            TItem="UIResumenEntidad" 
+                            AllowSorting="true" 
+                            PageSize=10>
+                            <Columns>
+                                <RadzenDataGridColumn Width="120px" TItem="UIResumenEntidad" Property="Nombre" Title="Ejecutivo">
+                                    <Template Context="ejecutivo">
+                                        <small>@String.Format("{0}", ejecutivo.Nombre)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcATiempo" Title="A Tiempo" TextAlign="TextAlign.Center">
+                                    <Template Context="atiempo">
+                                        <small>@String.Format("{0} % ({1})", atiempo.PorcATiempo, atiempo.ATiempo)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcAtrasada" Title="Atrasadas" TextAlign="TextAlign.Center">                
+                                    <Template Context="atrasada">
+                                        <small>@String.Format("{0} % ({1})", atrasada.PorcAtrasada, atrasada.Atrasada)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcSinRegistro" Title="S/R" TextAlign="TextAlign.Center">                
+                                    <Template Context="sr">
+                                        <small>@String.Format("{0} % ({1})", sr.PorcSinRegistro, sr.SinRegistro)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+        <div class="col-sm-3 pr-2 pt-2">
+            <RadzenCard Style="height:245px; background-color:#0080001c;">
+                <div class="col-lg-12 col-xl-12">
+                    <h5 class="mb-3">Indicador de Recepciones</h5>
+                    <SpinLoader IsLoading=@isLoadingDespachosDelDia>
+                        <LoadingTemplate>
+                            <div class="col-sm-12 mt-5">
+                                <Chase Center="true"></Chase>
+                            </div>
+                        </LoadingTemplate>
+                        <ContentTemplate>
+                            <div class="row">
+                                <table class="table-borderless text-center"> 
+                                    <tr>
+                                        <th class="col-4 p-0"><small>Total Líneas</small></th>
+                                        <th class="col-4 p-0"><small>Por Recepcionar</small></th>
+                                        <th class="col-4 p-0"><small>Recepcionadas</small></th>
+                                    </tr>
+                                    <tr style="color:green;">
+                                        <td>@DespachosDiaService.DespachosDias.TotalLineas (@DespachosDiaService.DespachosDias.TotalOc Oc)</td>
+                                        <td>@DespachosDiaService.DespachosDias.TotalLineasPorRecepcionar (@DespachosDiaService.DespachosDias.TotalOcPorRecepcionar Oc)</td>
+                                        <td>@DespachosDiaService.DespachosDias.TotalLineasRecepcionadas (@DespachosDiaService.DespachosDias.TotalOcRecepcionadas Oc)</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <RadzenRadialGauge Style="width:100%; height:250px; margin-top:-25px; margin-bottom:-95px;">
+                            <RadzenRadialGaugeScale StartAngle="-90" EndAngle="90" Step="20" Min="0" Max=100 TickPosition=GaugeTickPosition.Inside>
+                                <RadzenRadialGaugeScalePointer Value=@DespachosDiaService.DespachosDias.TotalLineasRecepcionadasPerc Length="0.6" ShowValue=true>
+                                    <Template Context="pointer">
+                                        <h4>@pointer.Value %</h4>
+                                    </Template>
+                                </RadzenRadialGaugeScalePointer>
+                                <RadzenRadialGaugeScaleRange From="0" To="33" Fill="red" />
+                                <RadzenRadialGaugeScaleRange From="33" To="66" Fill="orange" />
+                                <RadzenRadialGaugeScaleRange From="66" To="100" Fill="green" /> 
+                            </RadzenRadialGaugeScale>
+                        </RadzenRadialGauge>
+                        </ContentTemplate>
+                    </SpinLoader>
+                </div>
+            </RadzenCard>
+        </div>
+
+        <div class="col-sm-3 pr-2 pt-2">
+            <RadzenCard Style="height:245px; background-color:#dc35451a;">
+                <SpinLoader IsLoading=@isLoadingResumenAtrasadosEjecutivo>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            Style="height: 205px;" 
+                            Data="@ResumenAtrasadosEjecutivos.OrderByDescending(x => (x.Codigo == null) ? -1 : 1).ThenByDescending(x => x.Atrasada)" 
+                            TItem="UIResumenEntidad" 
+                            AllowSorting="true" 
+                            PageSize=10>
+                            <Columns>
+                                <RadzenDataGridColumn Width="155px" TItem="UIResumenEntidad" Property="Nombre" Title="Ejecutivo">
+                                    <Template Context="ejecutivo">
+                                        <small>@String.Format("{0}", ejecutivo.Nombre)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcAtrasada" Title="Atrasadas" TextAlign="TextAlign.Center">                
+                                    <Template Context="atrasada">
+                                        <small>@String.Format("{0} % ({1})", atrasada.PorcAtrasada, atrasada.Atrasada)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcSinRegistro" Title="S/R" TextAlign="TextAlign.Center">                
+                                    <Template Context="sr">
+                                        <small>@String.Format("{0} % ({1})", sr.PorcSinRegistro, sr.SinRegistro)</small>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+        <div class="col-sm-3 pr-2 pt-2">
+            <RadzenCard Style="height:245px; background-color:#dc35451a;" >
+                <div class="col-lg-12 col-xl-12">
+                    <h5 class="mb-3">Indicador de Recepciones incumplidas</h5>
+                    <SpinLoader IsLoading=@isLoadingDespachosAtrasados>
+                        <LoadingTemplate>
+                            <div class="col-sm-12 mt-5">
+                                <Chase Center="true"></Chase>
+                            </div>
+                        </LoadingTemplate>
+                        <ContentTemplate>
+                            <div class="row">
+                                <table class="table-borderless text-center"> 
+                                    <tr>
+                                        <th class="col-4 p-0"><small>Total Líneas</small></th>
+                                        <th class="col-4 p-0"><small>Por Recepcionar</small></th>
+                                        <th class="col-4 p-0"><small>Recepcionadas</small></th>
+                                    </tr>
+                                    <tr style="color:red;">
+                                        <td>@DespachosAtrasadosService.DespachosAtrasados.TotalLineas (@DespachosAtrasadosService.DespachosAtrasados.TotalOc Oc)</td>
+                                        <td>@DespachosAtrasadosService.DespachosAtrasados.TotalLineasPorRecepcionar (@DespachosAtrasadosService.DespachosAtrasados.TotalOcPorRecepcionar Oc)</td>
+                                        <td>@DespachosAtrasadosService.DespachosAtrasados.TotalLineasRecepcionadas (@DespachosAtrasadosService.DespachosAtrasados.TotalOcRecepcionadas Oc)</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <RadzenRadialGauge Style="width:100%; height:250px; margin-top:-25px; margin-bottom:-95px;">
+                                <RadzenRadialGaugeScale StartAngle="-90" EndAngle="90" Step="20" Min="0" Max=100 TickPosition=GaugeTickPosition.Inside>
+                                    <RadzenRadialGaugeScalePointer Value=@DespachosAtrasadosService.DespachosAtrasados.TotalLineasRecepcionadasPerc Length="0.6" ShowValue=true>
+                                        <Template Context="pointer">
+                                            <h4>@pointer.Value %</h4>
+                                        </Template>
+                                    </RadzenRadialGaugeScalePointer>
+                                    <RadzenRadialGaugeScaleRange From="0" To="33" Fill="green" />
+                                    <RadzenRadialGaugeScaleRange From="33" To="66" Fill="orange" />
+                                    <RadzenRadialGaugeScaleRange From="66" To="100" Fill="red" /> 
+                                </RadzenRadialGaugeScale>
+                            </RadzenRadialGauge>
+                        </ContentTemplate>
+                    </SpinLoader>
+                </div>
+                
+            </RadzenCard>
+        </div>
+    </div>
+
+    
+    <div class="row no-gutters mx-n2 mb-5">
+        @*######### GRID DESPACHOS DEL DIA #########*@
+        <div class="col-sm-6 pr-2 pt-2">       
+            <RadzenCard Style="background-color:#0080001c;">
+                <RadzenTemplateForm class="row" TItem="FilterDespachosDeHoy" Data=@filterDespachosDeHoy Submit=@OnSubmitGridDespachosDia>
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Fecha inicio</h5>
+                        <RadzenDatePicker Max="@DateTime.Today" Name="fFefchaIni" @bind-Value=@filterDespachosDeHoy.FechaIni DateFormat="d" Class="w-100" />
+                        <div class="col">
+                            <RadzenRequiredValidator Component="fFefchaIni" Text="Debe seleccionar una fecha de inicio" Popup=true Style="position: absolute" />
+                        </div>
+                    </div>
+
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Fecha fin</h5>
+                        <RadzenDatePicker Max="@DateTime.Today" Name="fFefchaFin" @bind-Value=@filterDespachosDeHoy.FechaFin DateFormat="d" Class="w-100" />
+                        <div class="col">
+                            <RadzenRequiredValidator Component="fFefchaFin" Text="Debe seleccionar una fecha de fin" Popup=true Style="position: absolute" />
+                        </div>
+                    </div>
+
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Buscar</h5>
+                        <RadzenButton ButtonType="ButtonType.Submit" Icon="search" ButtonStyle="ButtonStyle.Light" Click=@(args => OnClickBtnDespachosDelDia()) />
+                    </div>
+
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Actualización automática</h5>
+                        <RadzenSwitch @bind-value=@autoRefreshDelDia Change=@(args => OnChangeAutoRefreshDelDia(args)) />
+                    </div>
+                </RadzenTemplateForm>
+
+                <SpinLoader IsLoading=@isLoadingDespachosDelDia>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            @ref="gridDelDia"
+                            Data="@DespachosDiaService.DespachosDias.UIOrdenCompra" 
+                            LoadData="@LoadDespachosDelDia"
+                            Count="@countDeldia"
+                            TItem="StOrdenCompra" 
+                            FilterMode="FilterMode.Advanced"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                            LogicalFilterOperator="LogicalFilterOperator.Or"
+                            AllowColumnResize="true"
+                            AllowFiltering="true" 
+                            AllowSorting="true"
+                            AllowPaging="true"
+                            PageSize="5"
+                            PagerPosition="PagerPosition.Bottom"
+                            ColumnWidth="200px"
+                            Filter="@OnFilterDelDia"
+                            Page="@OnPagingDelDia">
+                            <Template Context="order">
+                                <RadzenTabs>
+                                    <Tabs>
+                                        <RadzenTabsItem Text="Detalle">
+                                            <RadzenDataGrid AllowFiltering="false" AllowPaging="true" PageSize=5 AllowSorting="false" AllowColumnResize="true" Data="@order.Items" TItem="StDetalleOrdenCompra">
+                                                <Columns>
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Codigo" Title="Código Producto" />
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Nombre" Title="Producto" />
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Unidad" Title="Unidad" />
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Precio" Title="Precio">
+                                                        <Template Context="detail">
+                                                            @String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C0}", detail.Producto.Precio)
+                                                        </Template>
+                                                    </RadzenDataGridColumn>
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Cantidad" Title="Cantidad">
+                                                        <Template Context="detail">
+                                                            @String.Format("{0:0.00}", detail.Cantidad)
+                                                        </Template>
+                                                    </RadzenDataGridColumn>
+                                                </Columns>
+                                            </RadzenDataGrid>
+                                        </RadzenTabsItem>
+                                    </Tabs>
+                                </RadzenTabs>
+                            </Template>
+                            <Columns>
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="Proveedor.Rut" Title="Rut Proveedor" Visible="false" />
+                                <RadzenDataGridColumn Width="180px" TItem="StOrdenCompra" Property="Proveedor.Nombre" Title="Proveedor">
+                                    <FooterTemplate>Por despachar: <b>@countDeldia</b> órdenes de compra</FooterTemplate>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="Numero" Title="Orden Compra" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="Factura.Codigo" Title="Factura" />
+                                @*<RadzenDataGridColumn TItem="StOrdenCompra" Property="CantLineas" Title="Líneas" />*@
+                                @*<RadzenDataGridColumn TItem="StOrdenCompra" Property="CosFamilia" Title="Familia" />*@
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="CentroCosto.Codigo" Title="ID Casino" Visible="false" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="CentroCosto.Nombre" Title="Casino" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="CantidadLineasRecepcionadas" Title="% Recepción">
+                                    <Template Context="order">
+                                        @String.Format("{0:P0} ({1} de {2})", order.CantidadLineasRecepcionadas / order.CantidadLineasOriginales, order.CantidadLineasRecepcionadas, order.CantidadLineasOriginales)
+                                    </Template>
+                                </RadzenDataGridColumn> 
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="FechaDespacho" Title="Fecha Despacho">                     
+                                    <Template Context="order">
+                                        @String.Format("{0:dd/MM/yyyy}", order.FechaDespacho)
+                                    </Template>
+                                </RadzenDataGridColumn>                        
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+        
+        @*######### GRID DESPACHOS ATRASADOS #########*@
+        <div class="col-sm-6 pr-2 pt-2">
+            <RadzenCard Style="background-color:#dc35451a;">
+                <RadzenTemplateForm class="row" TItem="FilterDespachosAtrasados" Data=@filterDespachosAtrasados Submit=@OnSubmitGridDespachosAtrasados>
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Fecha inicio</h5>
+                        <RadzenDatePicker Max="@DateTime.Today.AddDays(-1)" Name="fFefchaIni" @bind-Value=@filterDespachosAtrasados.FechaIni DateFormat="d" Class="w-100" />
+                        <div class="col">
+                            <RadzenRequiredValidator Component="fFefchaIni" Text="Debe seleccionar una fecha de inicio" Popup=true Style="position: absolute" />
+                        </div>
+                    </div>
+
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Fecha fin</h5>
+                        <RadzenDatePicker Max="@DateTime.Today.AddDays(-1)" Name="fFefchaFin" @bind-Value=@filterDespachosAtrasados.FechaFin DateFormat="d" Class="w-100" />
+                        <div class="col">
+                            <RadzenRequiredValidator Component="fFefchaFin" Text="Debe seleccionar una fecha de fin" Popup=true Style="position: absolute" />
+                        </div>
+                    </div>
+
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Buscar</h5>
+                        <RadzenButton ButtonType="ButtonType.Submit" Icon="search" ButtonStyle="ButtonStyle.Light" Click=@(args => OnClickBtnDespachosAtrasados()) />
+                    </div>
+
+                    <div class="col-lg-12 col-xl-3 p-3">
+                        <h5 class="mb-4">Actualización automática</h5>
+                        <RadzenSwitch @bind-value=@autoRefreshAtrasadas Change=@(args => OnChangeAutoRefreshAtrasadas(args)) />
+                    </div>
+                </RadzenTemplateForm>
+
+                <SpinLoader IsLoading=@isLoadingDespachosAtrasados>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            @ref="gridAtrasadas"
+                            Data="@DespachosAtrasadosService.DespachosAtrasados.UIOrdenCompra" 
+                            LoadData="@LoadDespachosAtrasados"
+                            Count="@countAtrasadas"
+                            TItem="StOrdenCompra" 
+                            FilterMode="FilterMode.Advanced"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                            LogicalFilterOperator="LogicalFilterOperator.Or"
+                            AllowColumnResize="true"
+                            AllowFiltering="true" 
+                            AllowSorting="true"
+                            AllowPaging="true"
+                            PageSize=5
+                            PagerPosition="PagerPosition.Bottom"
+                            ColumnWidth="200px"
+                            Filter="@OnFilterAtrasadas"
+                            Page="@OnPagingAtrasadas">
+                            <Template Context="order">
+                                <RadzenTabs>
+                                    <Tabs>
+                                        <RadzenTabsItem Text="Detalle">
+                                            <RadzenDataGrid AllowFiltering="false" AllowPaging="true" PageSize=5 AllowSorting="false" AllowColumnResize="true" Data="@order.Items" TItem="StDetalleOrdenCompra">
+                                                <Columns>
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Codigo" Title="Código Producto" />
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Nombre" Title="Producto" />
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Unidad" Title="Unidad" />
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Producto.Precio" Title="Precio">
+                                                        <Template Context="detail">
+                                                            @String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C0}", detail.Producto.Precio)
+                                                        </Template>
+                                                    </RadzenDataGridColumn>
+                                                    <RadzenDataGridColumn TItem="StDetalleOrdenCompra" Property="Cantidad" Title="Cantidad">
+                                                        <Template Context="detail">
+                                                            @String.Format("{0:0.00}", detail.Cantidad)
+                                                        </Template>
+                                                    </RadzenDataGridColumn>
+                                                </Columns>
+                                            </RadzenDataGrid>
+                                        </RadzenTabsItem>
+                                    </Tabs>
+                                </RadzenTabs>
+                            </Template>
+                            <Columns>
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="Proveedor.Rut" Title="Rut Proveedor" Visible="false" />
+                                <RadzenDataGridColumn Width="180px" TItem="StOrdenCompra" Property="Proveedor.Nombre" Title="Proveedor">
+                                    <FooterTemplate>Por despachar: <b>@DespachosAtrasadosService.DespachosAtrasados.UIOrdenCompra.Count()</b> órdenes de compra</FooterTemplate>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="Numero" Title="Orden Compra" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="Factura.Codigo" Title="Factura" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="CentroCosto.Codigo" Title="ID Casino" Visible="false" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="CentroCosto.Nombre" Title="Casino" />
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="CantidadLineasRecepcionadas" Title="% Recepción">
+                                    <Template Context="order">
+                                        @String.Format("{0:P0} ({1} de {2})", order.CantidadLineasRecepcionadas / order.CantidadLineasOriginales, order.CantidadLineasRecepcionadas, order.CantidadLineasOriginales)
+                                    </Template>
+                                </RadzenDataGridColumn> 
+                                <RadzenDataGridColumn TItem="StOrdenCompra" Property="FechaDespacho" Title="Fecha Despacho">                     
+                                    <Template Context="order">
+                                        @String.Format("{0:dd/MM/yyyy}", order.FechaDespacho)
+                                    </Template>
+                                </RadzenDataGridColumn>                        
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+    </div>
+
+    <div class="row no-gutters mx-n2">
+        <RadzenCard>
+            <RadzenTemplateForm class="row" TItem="FilterHistorico" Data=@filterHistorico Submit=@OnSubmitGridHistorico>
+                <div class="col-lg-12 col-xl-4 p-3">
+                    <h5 class="mb-4">Fecha inicio</h5>
+                    <RadzenDatePicker Name="fFefchaIni" @bind-Value=@filterHistorico.FechaIni DateFormat="d" Class="w-100" />
+                    <div class="col">
+                        <RadzenRequiredValidator Component="fFefchaIni" Text="Debe seleccionar una fecha de inicio" Popup=true Style="position: absolute" />
+                    </div>
+                </div>
+
+                <div class="col-lg-12 col-xl-4 p-3">
+                    <h5 class="mb-4">Fecha fin</h5>
+                    <RadzenDatePicker Name="fFefchaFin" @bind-Value=@filterHistorico.FechaFin DateFormat="d" Class="w-100" />
+                    <div class="col">
+                        <RadzenRequiredValidator Component="fFefchaFin" Text="Debe seleccionar una fecha de fin" Popup=true Style="position: absolute" />
+                    </div>
+                </div>
+
+                <div class="col-lg-12 col-xl-4 p-3">
+                    <h5 class="mb-4">Buscar</h5>
+                    <RadzenButton ButtonType="ButtonType.Submit" Icon="search" ButtonStyle="ButtonStyle.Light" Click=@(args => OnClickBtnFiltroHistorico()) />
+                </div>
+            </RadzenTemplateForm>
+        </RadzenCard>
+    </div>
+
+    <div class="row no-gutters mx-n2 mb-5">
+        <div class="col-sm-4 pr-2 pt-2">
+            <RadzenCard>
+                <div class="col-lg-12 col-xl-12 p-3">
+                    <h4 class="mb-4">Ejecutivos</h4>
+                    <h5 class="mb-4">Resumen de Recepciones Periodo: @string.Format("{0:dd/MM/yyyy}", filterHistorico.FechaIni) a @string.Format("{0:dd/MM/yyyy}", filterHistorico.FechaFin)</h5>
+                </div>
+
+                <SpinLoader IsLoading=@isLoadingResumenHistorico>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            Data="@ResumenEjecutivos" 
+                            TItem="UIResumenEntidad" 
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                            LogicalFilterOperator="LogicalFilterOperator.Or"
+                            AllowSorting="true"
+                            AllowPaging="true"
+                            PageSize=6
+                            PagerPosition="PagerPosition.Bottom"
+                            AllowColumnResize="true">
+                            <Columns>
+                                <RadzenDataGridColumn Width="190px" TItem="UIResumenEntidad" Property="Nombre" Title="Ejecutivo" />
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcATiempo" Title="% A Tiempo" TextAlign="TextAlign.Center">
+                                    <Template Context="atiempo">
+                                        @String.Format("{0} %", atiempo.PorcATiempo)
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcAtrasada" Title="% Atrasadas" TextAlign="TextAlign.Center">                
+                                    <Template Context="atrasada">
+                                        @String.Format("{0} %", atrasada.PorcAtrasada)
+                                    </Template>
+                                </RadzenDataGridColumn>                
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+        <div class="col-sm-4 pr-2 pt-2">
+            <RadzenCard>
+                <div class="col-lg-12 col-xl-12 p-3">
+                    <h4 class="mb-4">Casinos</h4>
+                    <h5 class="mb-4">Resumen de Recepciones Periodo: @string.Format("{0:dd/MM/yyyy}", filterHistorico.FechaIni) a @string.Format("{0:dd/MM/yyyy}", filterHistorico.FechaFin)</h5>
+                </div>
+
+                <SpinLoader IsLoading=@isLoadingResumenHistorico>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            Data="@ResumenCasinos" 
+                            TItem="UIResumenEntidad" 
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                            LogicalFilterOperator="LogicalFilterOperator.Or"
+                            AllowSorting="true"
+                            AllowPaging="true"
+                            PageSize=6
+                            PagerPosition="PagerPosition.Bottom"
+                            AllowColumnResize="true">
+                            <Columns>
+                                <RadzenDataGridColumn Width="190px" TItem="UIResumenEntidad" Property="Nombre" Title="Casino" />
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcATiempo" Title="% A Tiempo" TextAlign="TextAlign.Center">
+                                    <Template Context="atiempo">
+                                        @String.Format("{0} %", atiempo.PorcATiempo)
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcAtrasada" Title="% Atrasadas" TextAlign="TextAlign.Center">                
+                                    <Template Context="atrasada">
+                                        @String.Format("{0} %", atrasada.PorcAtrasada)
+                                    </Template>
+                                </RadzenDataGridColumn>                
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+        <div class="col-sm-4 pr-2 pt-2">
+            <RadzenCard>
+                <div class="col-lg-12 col-xl-12 p-3">
+                    <h4 class="mb-4">Proveedores</h4>
+                    <h5 class="mb-4">Resumen de Recepciones Periodo: @string.Format("{0:dd/MM/yyyy}", filterHistorico.FechaIni) a @string.Format("{0:dd/MM/yyyy}", filterHistorico.FechaFin)</h5>
+                </div>
+
+                <SpinLoader IsLoading=@isLoadingResumenHistorico>
+                    <LoadingTemplate>
+                        <div class="col-sm-12 mt-5 mb-5" style="vertical-align:middle;">                            
+                            <Chase Center="true"></Chase>
+                        </div>
+                    </LoadingTemplate>
+
+                    <ContentTemplate>
+                        <RadzenDataGrid 
+                            Data="@ResumenProveedores" 
+                            TItem="UIResumenEntidad" 
+                            AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                            LogicalFilterOperator="LogicalFilterOperator.Or"
+                            AllowSorting="true"
+                            AllowPaging="true"
+                            PageSize=6
+                            PagerPosition="PagerPosition.Bottom"
+                            AllowColumnResize="true">
+                            <Columns>
+                                <RadzenDataGridColumn Width="190px" TItem="UIResumenEntidad" Property="Nombre" Title="Proveedor" />
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcATiempo" Title="% A Tiempo" TextAlign="TextAlign.Center">
+                                    <Template Context="atiempo">
+                                        @String.Format("{0} %", atiempo.PorcATiempo)
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="UIResumenEntidad" Property="PorcAtrasada" Title="% Atrasadas" TextAlign="TextAlign.Center">                
+                                    <Template Context="atrasada">
+                                        @String.Format("{0} %", atrasada.PorcAtrasada)
+                                    </Template>
+                                </RadzenDataGridColumn>                
+                            </Columns>
+                        </RadzenDataGrid>
+                    </ContentTemplate>
+                </SpinLoader>
+            </RadzenCard>
+        </div>
+    </div>
+</div>
