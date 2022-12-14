@@ -44,7 +44,7 @@ namespace DashboardAbast.Client.Pages
         private RadzenDataGrid<StOrdenCompra> gridDelDia;
         private RadzenDataGrid<StOrdenCompra> gridAtrasadas;
 
-        bool isLoadingDespachosDelDia = true;
+        [Parameter] public bool isLoadingDespachosDelDia { get; set; } = false;
         bool isLoadingResumenDiarioEjecutivo = true;
         bool isLoadingResumenAtrasadosEjecutivo = true;
         bool isLoadingDespachosAtrasados = true;
@@ -60,6 +60,8 @@ namespace DashboardAbast.Client.Pages
 
         protected override async Task OnInitializedAsync()
         {
+            //isLoadingDespachosDelDia = true;
+
             DateTime oPrimerDiaDelMes = new(FechaIni.Year, FechaIni.Month, 1);
             FechaFin = FechaFin.AddDays(1).AddSeconds(-1);
             
@@ -109,21 +111,15 @@ namespace DashboardAbast.Client.Pages
                 LoadResumenAtrasadosEjecutivo()
             };
 
+            Console.WriteLine($"Dashboard Abastecimiento - 1 isLoadingDespachosDelDia: {isLoadingDespachosDelDia}");
+
             await Task.WhenAll(tasks);
+            //isLoadingDespachosDelDia = false;
+
+            Console.WriteLine($"Dashboard Abastecimiento - 2 isLoadingDespachosDelDia: {isLoadingDespachosDelDia}");
+
             isLoadingResumenHistorico = false;
             StateHasChanged();
-        }
-
-        void OnFilterDelDia(DataGridColumnFilterEventArgs<StOrdenCompra> args)
-        {
-            columnNameDelDia = args.Column.Title;
-            columnValueDelDia = args.FilterValue.ToString();
-            pageIndexDelDia = 1;
-        }
-
-        void OnPagingDelDia(PagerEventArgs args)
-        {
-            pageIndexDelDia = args.PageIndex + 1;
         }
 
         void OnFilterAtrasadas(DataGridColumnFilterEventArgs<StOrdenCompra> args)
@@ -138,9 +134,11 @@ namespace DashboardAbast.Client.Pages
             pageIndexAtrasados = args.PageIndex + 1;
         }
 
+        // ###################################### INICIO Despachos Del Dia 
+
         private async Task LoadDespachosDelDia()
         {
-            isLoadingDespachosDelDia = true;
+            //isLoadingDespachosDelDia = true;
             await DespachosDiaService.GetDespachosDiasGrid(
                 filterDespachosDeHoy.FechaIni,
                 filterDespachosDeHoy.FechaFin,
@@ -153,10 +151,56 @@ namespace DashboardAbast.Client.Pages
                 columnValueDelDia
             );
             countDeldia = DespachosDiaService.DespachosDias.TotalOcPorRecepcionar;
-            isLoadingDespachosDelDia = false;
+            //isLoadingDespachosDelDia = false;
             StateHasChanged();
             gridDelDia.CurrentPage = pageIndexDelDia - 1;
         }
+
+        private async void OnSubmitGridDespachosDia()
+        {
+            DespachosDiaService.DespachosDias.UIOrdenCompra.Clear();
+            List<Task> tasks = new List<Task> { LoadDespachosDelDia(), LoadResumenDiarioEjecutivo() };
+            await Task.WhenAll(tasks);
+            //isLoadingDespachosDelDia = false;
+            StateHasChanged();
+        }
+
+        void OnClickBtnDespachosDelDia()
+        {
+            //isLoadingDespachosDelDia = true;
+        }
+
+        void OnChangeAutoRefreshDelDia(bool value)
+        {
+            //Console.WriteLine($"Dashboard Abastecimiento - OnChangeAutoRefreshDelDia: {value}");
+
+            if (value)
+            {
+                aTimer = new System.Timers.Timer(60000);
+                aTimer.Elapsed += async (sender, e) => await LoadDespachosDelDia();
+                InvokeAsync(StateHasChanged);
+                aTimer.Start();
+                aTimer.Enabled = true;
+            }
+            else
+            {
+                aTimer.Enabled = false;
+            }
+        }
+
+        void OnFilterDelDia(DataGridColumnFilterEventArgs<StOrdenCompra> args)
+        {
+            columnNameDelDia = args.Column.Title;
+            columnValueDelDia = args.FilterValue.ToString();
+            pageIndexDelDia = 1;
+        }
+
+        void OnPagingDelDia(PagerEventArgs args)
+        {
+            pageIndexDelDia = args.PageIndex + 1;
+        }
+
+        // ###################################### FIN Despachos Del Dia 
 
         private async Task LoadResumenAtrasadosEjecutivo()
         {
@@ -227,15 +271,6 @@ namespace DashboardAbast.Client.Pages
             ResumenEjecutivos = ResumenEntidadService.ResumenEntidades;
         }
 
-        private async void OnSubmitGridDespachosDia()
-        {
-            DespachosDiaService.DespachosDias.UIOrdenCompra.Clear();
-            List<Task> tasks = new List<Task> { LoadDespachosDelDia(), LoadResumenDiarioEjecutivo() };
-            await Task.WhenAll(tasks);
-            isLoadingDespachosDelDia = false;
-            StateHasChanged();
-        }
-
         private async void OnSubmitGridDespachosAtrasados()
         {
             DespachosAtrasadosService.DespachosAtrasados.UIOrdenCompra.Clear();
@@ -261,11 +296,6 @@ namespace DashboardAbast.Client.Pages
             await Task.WhenAll(tasks);
             isLoadingResumenHistorico = false;
             StateHasChanged();
-        }
-
-        void OnClickBtnDespachosDelDia()
-        {
-            isLoadingDespachosDelDia = true;
         }
 
         void OnClickBtnDespachosAtrasados()
@@ -300,24 +330,6 @@ namespace DashboardAbast.Client.Pages
             CentroCostoService.CentrosCosto.Clear();
             await CentroCostoService.GetCentrosCostoPorJefatura(value.ToString());
             StateHasChanged();
-        }
-
-        void OnChangeAutoRefreshDelDia(bool value)
-        {
-            //Console.WriteLine($"Dashboard Abastecimiento - OnChangeAutoRefreshDelDia: {value}");
-
-            if (value)
-            {
-                aTimer = new System.Timers.Timer(60000);
-                aTimer.Elapsed += async (sender, e) => await LoadDespachosDelDia();
-                InvokeAsync(StateHasChanged);
-                aTimer.Start();
-                aTimer.Enabled = true;
-            }
-            else
-            {
-                aTimer.Enabled = false;
-            }
         }
 
         void OnChangeAutoRefreshAtrasadas(bool value)

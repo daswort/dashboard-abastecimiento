@@ -35,24 +35,32 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddPooledDbContextFactory<PptoCeContext>(options => {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("PptoCeProdConnection"));
-    options.ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>();
-});
+    options.UseSqlServer(builder.Configuration.GetConnectionString("PptoCeProdConnection"))
+    .ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>()
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+    .EnableThreadSafetyChecks(false);
+}, poolSize: 32);
 
 builder.Services.AddPooledDbContextFactory<CerberusMinutaContext>(options => {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("CerberusMinutaProdConnection"));
-    options.ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>();
-});
+    options.UseSqlServer(builder.Configuration.GetConnectionString("CerberusMinutaProdConnection"))
+    .ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>()
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+    .EnableThreadSafetyChecks(false);
+}, poolSize: 32);
 
 builder.Services.AddPooledDbContextFactory<AxCasinoContext>(options => {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AxCasinoProdConnection"));
-    options.ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>();
-});
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AxCasinoProdConnection"))
+    .ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>()
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+    .EnableThreadSafetyChecks(false);
+}, poolSize: 32);
 
 builder.Services.AddPooledDbContextFactory<CerberusContext>(options => {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("CerberusProdConnection"));
-    options.ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>();
-});
+    options.UseSqlServer(builder.Configuration.GetConnectionString("CerberusProdConnection"))
+    .ReplaceService<IQuerySqlGeneratorFactory, WithNolockQuerySqlGeneratorFactory>()
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+    .EnableThreadSafetyChecks(false);
+}, poolSize: 32);
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 

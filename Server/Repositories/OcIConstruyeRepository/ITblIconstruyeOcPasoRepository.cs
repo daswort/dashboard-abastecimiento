@@ -4,4 +4,5 @@
     {
         IQueryable<OcNoRecepcionada> GetOrdenesCompraVigentesByFechaDespacho(OcNoRecepcionadasParametros parametros);
     }
+
 }

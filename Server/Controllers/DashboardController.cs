@@ -58,15 +58,15 @@ namespace DashboardAbast.Server.Controllers
             if (parametros.Ejecutivos.Any()) {
                 EjecutivoParametros ejecutivoParametros = new();
                 ejecutivoParametros.ListaRut = parametros.Ejecutivos;
-                var centrosCostoEjecutivos = await EjecutivoRepo.ObtenerEjecutivos(ejecutivoParametros).AsNoTracking().ToListAsync();
+                var centrosCostoEjecutivos = await EjecutivoRepo.ObtenerEjecutivos(ejecutivoParametros).ToListAsync();
                 queryTblIConstruye = queryTblIConstruye.Where(x => centrosCostoEjecutivos.Select(y => y.CentroCosto).Distinct().Contains(x.CentroCosto));
                 queryOcParaDespachar = queryOcParaDespachar.Where(x => centrosCostoEjecutivos.Select(y => y.CentroCosto).Distinct().Contains(x.CentroCosto));
                 queryOcDespachadas = queryOcDespachadas.Where(x => centrosCostoEjecutivos.Select(y => y.CentroCosto).Distinct().Contains(x.CentroCosto));
             }
 
             System.Diagnostics.Debug.WriteLine("\n################ INICIO QUERY CONFIRMADAS POR PROVEEDOR");
-            var ocParaDespacharFiltradaList = (from noFiltrada in await queryOcParaDespachar.AsNoTracking().ToListAsync()
-                                               join filtarda in await queryTblIConstruye.AsNoTracking().ToListAsync() 
+            var ocParaDespacharFiltradaList = (from noFiltrada in await queryOcParaDespachar.ToListAsync()
+                                               join filtarda in await queryTblIConstruye.ToListAsync() 
                                                on new { noFiltrada.NumOc, noFiltrada.CodigoProducto } equals new { filtarda.NumOc, filtarda.CodigoProducto }
                                                orderby noFiltrada.NumOc, noFiltrada.FechaDespacho descending
                                                select new { noFiltrada.NumOc, noFiltrada.CodigoProducto }).ToList();
@@ -74,7 +74,7 @@ namespace DashboardAbast.Server.Controllers
 
             System.Diagnostics.Debug.WriteLine("\n################ INICIO QUERY NO DESPACHADAS");
             var ocLineasNoDEspachadas = (from t1 in ocParaDespacharFiltradaList
-                                         join t2 in await queryOcDespachadas.AsNoTracking().ToListAsync() 
+                                         join t2 in await queryOcDespachadas.ToListAsync() 
                                          on new { t1.NumOc, t1.CodigoProducto } equals new { t2.NumOc, t2.CodigoProducto } into final
                                          from aFinal in final.DefaultIfEmpty()
                                          where aFinal == null
@@ -136,7 +136,7 @@ namespace DashboardAbast.Server.Controllers
 
             // Se obtiene todas las líneas hechas por CE
             System.Diagnostics.Debug.WriteLine("\n################ INICIO QUERY OCs PAGINADAS");
-            var ocParaDespacharList = await Ent5.ObtenerOcNoRecepcionadas(ocNoRecepcionadasParametros).AsNoTracking().ToListAsync();
+            var ocParaDespacharList = await Ent5.ObtenerOcNoRecepcionadas(ocNoRecepcionadasParametros).ToListAsync();
             System.Diagnostics.Debug.WriteLine("\n################ TÉRMINO QUERY OCs PAGINADAS");
 
             // Se obtiene la cantidad de líneas recepcionadas por Oc
@@ -160,9 +160,9 @@ namespace DashboardAbast.Server.Controllers
             // Se obtiene la lista final con las líneas hechas por CE y que no han sido despachadas aún
             System.Diagnostics.Debug.WriteLine("\n################ INICIO QUERY ocLineasNoDEspachadas");
             var ocLineasNoDEspachadas = (from t1 in ocParaDespacharList
-                                         join t3 in await productosQuery.AsNoTracking().ToListAsync() on t1.CodigoProducto equals t3.ArticuloId
-                                         join t4 in await casinosQuery.AsNoTracking().ToListAsync() on t1.CentroCosto equals t4.Codigo
-                                         join t5 in await proveedoresQuery.AsNoTracking().ToListAsync() on t1.IdProveedor equals t5.ProveedorId
+                                         join t3 in await productosQuery.ToListAsync() on t1.CodigoProducto equals t3.ArticuloId
+                                         join t4 in await casinosQuery.ToListAsync() on t1.CentroCosto equals t4.Codigo
+                                         join t5 in await proveedoresQuery.ToListAsync() on t1.IdProveedor equals t5.ProveedorId
                                          orderby t1.NumOc, t1.FechaDespacho descending
                                          select new QrOrdenCompraLinea
                                          {
@@ -205,9 +205,9 @@ namespace DashboardAbast.Server.Controllers
 
             var proveedoresAxCasinoList = await (from t1 in _axCasinoContext.Set<Purchtable>()
                                                  where t1.Deliverydate >= vFechaIni && t1.Deliverydate <= vFechaFin
-                                                 select new { ProveedorId = t1.Invoiceaccount }).Distinct().AsNoTracking().ToListAsync();
+                                                 select new { ProveedorId = t1.Invoiceaccount }).Distinct().ToListAsync();
 
-            var proveedoresAllList = await (from t1 in _pptoCeContext.Set<TblProveedore>() select new { t1.ProveedorId, t1.ProveedorAlias }).AsNoTracking().ToListAsync();
+            var proveedoresAllList = await (from t1 in _pptoCeContext.Set<TblProveedore>() select new { t1.ProveedorId, t1.ProveedorAlias }).ToListAsync();
 
             var proveedoresPorOcFechasList = (from t1 in proveedoresAxCasinoList
                                               join t2 in proveedoresAllList on t1.ProveedorId equals t2.ProveedorId
